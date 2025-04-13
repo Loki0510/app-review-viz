@@ -10,7 +10,7 @@ from textblob import TextBlob
 # ----------------------------------------
 @st.cache_data
 def load_data():
-    base_path = r"C:\Users\lokes\OneDrive\Desktop\LSPROJ\Cleaned_app_reviews"
+    base_path = "Cleaned_app_reviews"
 
     zoom_df = pd.read_csv(f"{base_path}/cleaned_zoom_reviews.csv")
     webex_df = pd.read_csv(f"{base_path}/cleaned_webex_reviews.csv")
