@@ -4,6 +4,7 @@ import emoji
 from wordcloud import WordCloud
 import matplotlib.pyplot as plt
 from textblob import TextBlob
+import matplotlib.font_manager as fm
 
 # ----------------------------------------
 # Load and Combine CSV Files
@@ -183,7 +184,7 @@ else:
     st.info("✅ No conflicting sentiment found in current selection.")
 
 # ----------------------------------------
-# NEW: Emoji Frequency Chart
+# Most Frequent Emojis by Sentiment (with fixed x-axis)
 # ----------------------------------------
 st.subheader("🧮 Most Frequent Emojis by Sentiment")
 
@@ -199,47 +200,23 @@ if not filtered.empty:
     top_emojis = emoji_df.sum(axis=1).sort_values(ascending=False).head(10).index
     emoji_subset = emoji_df.loc[top_emojis]
 
+    # Set font that supports emojis
+    font_prop = fm.FontProperties(family='Segoe UI Emoji')
+
     fig, ax = plt.subplots(figsize=(10, 5))
     emoji_subset.plot(kind="bar", stacked=True, ax=ax)
     ax.set_title("Top 10 Emojis Grouped by Sentiment")
     ax.set_ylabel("Count")
     ax.set_xlabel("Emoji")
+    ax.set_xticks(range(len(top_emojis)))
+    ax.set_xticklabels(top_emojis, fontproperties=font_prop, fontsize=16)
     ax.legend(title="Sentiment")
     st.pyplot(fig)
 else:
     st.info("No emoji data available for this selection.")
 
 # ----------------------------------------
-# NEW: Hybrid Sentiment Score Over Time
-# ----------------------------------------
-st.subheader("📈 Emoji vs Text Sentiment Score Over Time")
-
-if not filtered.empty:
-    hybrid = filtered.copy()
-    hybrid['month'] = hybrid['date'].dt.to_period("M").dt.to_timestamp()
-
-    def encode_val(val):
-        if val == 'Positive': return 1
-        if val == 'Negative': return -1
-        return 0
-
-    hybrid['emoji_score'] = hybrid['sentiment'].apply(encode_val)
-    hybrid['text_score'] = hybrid['text_sentiment'].apply(encode_val)
-
-    monthly = hybrid.groupby('month')[['emoji_score', 'text_score']].mean()
-
-    fig, ax = plt.subplots()
-    monthly.plot(ax=ax, marker='o')
-    ax.set_title("Emoji vs Text Sentiment Score Over Time")
-    ax.set_ylabel("Sentiment Score (avg)")
-    ax.set_xlabel("Month")
-    ax.legend(["Emoji-Inferred", "Text-Inferred"])
-    st.pyplot(fig)
-else:
-    st.info("Insufficient sentiment data for timeline comparison.")
-
-# ----------------------------------------
-# Reviews Table
+# Sample Reviews Table
 # ----------------------------------------
 st.subheader("📝 Sample Reviews")
 st.dataframe(filtered[['date', 'review', 'sentiment', 'text_sentiment']], use_container_width=True)
