@@ -1,10 +1,13 @@
 import streamlit as st
 import pandas as pd
 import emoji
-from wordcloud import WordCloud
 import matplotlib.pyplot as plt
-from textblob import TextBlob
 import matplotlib.font_manager as fm
+from wordcloud import WordCloud
+
+from transformers import AutoTokenizer, AutoModelForSequenceClassification
+import torch
+import numpy as np
 
 # ----------------------------------------
 # Load and Combine CSV Files
@@ -12,7 +15,6 @@ import matplotlib.font_manager as fm
 @st.cache_data
 def load_data():
     base_path = "Cleaned_app_reviews"
-
     zoom_df = pd.read_csv(f"{base_path}/cleaned_zoom_reviews.csv")
     webex_df = pd.read_csv(f"{base_path}/cleaned_webex_reviews.csv")
     firefox_df = pd.read_csv(f"{base_path}/cleaned_firefox_reviews.csv")
@@ -29,6 +31,27 @@ def load_data():
     df['review'] = df['review'].astype(str)
     df['appVersion'] = df['appVersion'].astype(str)
     return df
+
+# ----------------------------------------
+# Load RoBERTa Sentiment Model
+# ----------------------------------------
+@st.cache_resource
+def load_roberta_model():
+    tokenizer = AutoTokenizer.from_pretrained("cardiffnlp/twitter-roberta-base-sentiment")
+    model = AutoModelForSequenceClassification.from_pretrained("cardiffnlp/twitter-roberta-base-sentiment")
+    return tokenizer, model
+
+tokenizer, model = load_roberta_model()
+labels = ['Negative', 'Neutral', 'Positive']
+
+def analyze_text_sentiment(text):
+    if not text.strip():
+        return "Neutral"
+    tokens = tokenizer(text, return_tensors="pt", truncation=True, padding=True)
+    with torch.no_grad():
+        output = model(**tokens)
+    scores = torch.nn.functional.softmax(output.logits, dim=1).squeeze().numpy()
+    return labels[np.argmax(scores)]
 
 # ----------------------------------------
 # Emoji Sentiment Setup
@@ -54,18 +77,6 @@ def classify_sentiment(emojis):
         return 'Neutral'
 
 # ----------------------------------------
-# Text Sentiment Using TextBlob
-# ----------------------------------------
-def analyze_text_sentiment(text):
-    score = TextBlob(text).sentiment.polarity
-    if score > 0.1:
-        return "Positive"
-    elif score < -0.1:
-        return "Negative"
-    else:
-        return "Neutral"
-
-# ----------------------------------------
 # Streamlit UI
 # ----------------------------------------
 st.set_page_config(page_title="App Review Dashboard", layout="wide")
@@ -74,7 +85,9 @@ st.title("📊 App Review Emoji & Text Sentiment Comparison")
 df = load_data()
 df['emojis'] = df['review'].apply(extract_emojis)
 df['sentiment'] = df['emojis'].apply(classify_sentiment)
-df['text_sentiment'] = df['review'].apply(analyze_text_sentiment)
+
+with st.spinner("Analyzing text sentiment using RoBERTa..."):
+    df['text_sentiment'] = df['review'].apply(analyze_text_sentiment)
 
 # Sidebar Filters
 st.sidebar.header("🔍 Filter Reviews")
@@ -92,9 +105,7 @@ filtered = df[
     (df['date'] <= pd.to_datetime(date_range[1]))
 ]
 
-# ----------------------------------------
 # Sentiment Trend Over Time
-# ----------------------------------------
 st.subheader(f"📈 Sentiment Trend for {app_selected} - v{version_selected}")
 if not filtered.empty:
     trend_df = filtered.groupby([filtered['date'].dt.to_period("M"), 'sentiment']).size().unstack(fill_value=0)
@@ -107,11 +118,8 @@ if not filtered.empty:
 else:
     st.warning("No reviews found for selected filters.")
 
-# ----------------------------------------
-# Stacked Bar Chart: Review Content vs Emoji Sentiment
-# ----------------------------------------
+# Stacked Bar Chart
 st.subheader("📊 Comparison of Review Content vs Emoji Sentiment")
-
 if not filtered.empty:
     text_counts = filtered['text_sentiment'].value_counts().rename("Review Content")
     emoji_counts = filtered['sentiment'].value_counts().rename("Emoji Sentiment")
@@ -129,11 +137,8 @@ if not filtered.empty:
 else:
     st.info("No data available for sentiment comparison.")
 
-# ----------------------------------------
 # Sentiment Over Time (Text vs Emoji)
-# ----------------------------------------
 st.subheader("📉 Sentiment Over Time (Text vs Emoji)")
-
 if not filtered.empty:
     df_monthly = filtered.copy()
     df_monthly['month'] = df_monthly['date'].dt.to_period("M").dt.to_timestamp()
@@ -153,16 +158,12 @@ if not filtered.empty:
 else:
     st.info("📭 No data available to plot monthly sentiment trends.")
 
-# ----------------------------------------
 # Conflicting Sentiment Pie Chart
-# ----------------------------------------
 st.subheader("🥧 Conflicting Sentiment: Text vs Emoji")
-
 conflict_filtered = filtered[
     ((filtered['text_sentiment'] == 'Positive') & (filtered['sentiment'] == 'Negative')) |
     ((filtered['text_sentiment'] == 'Negative') & (filtered['sentiment'] == 'Positive'))
 ]
-
 conflict_filtered['combo_sentiment'] = (
     "Text: " + conflict_filtered['text_sentiment'] + " | Emoji: " + conflict_filtered['sentiment']
 )
@@ -183,11 +184,8 @@ if not conflict_counts.empty:
 else:
     st.info("✅ No conflicting sentiment found in current selection.")
 
-# ----------------------------------------
-# Most Frequent Emojis by Sentiment (with fixed x-axis)
-# ----------------------------------------
+# Most Frequent Emojis by Sentiment
 st.subheader("🧮 Most Frequent Emojis by Sentiment")
-
 if not filtered.empty:
     emoji_sentiment_map = {}
     for emojis, sentiment in zip(filtered['emojis'], filtered['sentiment']):
@@ -200,9 +198,7 @@ if not filtered.empty:
     top_emojis = emoji_df.sum(axis=1).sort_values(ascending=False).head(10).index
     emoji_subset = emoji_df.loc[top_emojis]
 
-    # Set font that supports emojis
     font_prop = fm.FontProperties(family='Segoe UI Emoji')
-
     fig, ax = plt.subplots(figsize=(10, 5))
     emoji_subset.plot(kind="bar", stacked=True, ax=ax)
     ax.set_title("Top 10 Emojis Grouped by Sentiment")
@@ -215,8 +211,6 @@ if not filtered.empty:
 else:
     st.info("No emoji data available for this selection.")
 
-# ----------------------------------------
 # Sample Reviews Table
-# ----------------------------------------
 st.subheader("📝 Sample Reviews")
 st.dataframe(filtered[['date', 'review', 'sentiment', 'text_sentiment']], use_container_width=True)
