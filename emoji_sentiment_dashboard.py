@@ -118,7 +118,7 @@ if not filtered.empty:
 else:
     st.warning("No reviews found for selected filters.")
 
-# Stacked Bar Chart
+# Comparison Bar Chart
 st.subheader("📊 Comparison of Review Content vs Emoji Sentiment")
 if not filtered.empty:
     text_counts = filtered['text_sentiment'].value_counts().rename("Review Content")
@@ -184,7 +184,7 @@ if not conflict_counts.empty:
 else:
     st.info("✅ No conflicting sentiment found in current selection.")
 
-# Most Frequent Emojis by Sentiment
+# Most Frequent Emojis by Sentiment (with labels)
 st.subheader("🧮 Most Frequent Emojis by Sentiment")
 if not filtered.empty:
     emoji_sentiment_map = {}
@@ -198,14 +198,16 @@ if not filtered.empty:
     top_emojis = emoji_df.sum(axis=1).sort_values(ascending=False).head(10).index
     emoji_subset = emoji_df.loc[top_emojis]
 
-    font_prop = fm.FontProperties(family='Segoe UI Emoji')
+    # Convert emojis to readable labels
+    emoji_labels = [emoji.demojize(e).replace(":", "").replace("_", " ").title() for e in top_emojis]
+
     fig, ax = plt.subplots(figsize=(10, 5))
     emoji_subset.plot(kind="bar", stacked=True, ax=ax)
     ax.set_title("Top 10 Emojis Grouped by Sentiment")
     ax.set_ylabel("Count")
     ax.set_xlabel("Emoji")
-    ax.set_xticks(range(len(top_emojis)))
-    ax.set_xticklabels(top_emojis, fontproperties=font_prop, fontsize=16)
+    ax.set_xticks(range(len(emoji_labels)))
+    ax.set_xticklabels(emoji_labels, rotation=45, ha='right', fontsize=10)
     ax.legend(title="Sentiment")
     st.pyplot(fig)
 else:
