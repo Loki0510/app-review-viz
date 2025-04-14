@@ -1,6 +1,7 @@
 streamlit
 pandas
 emoji
-matplotlib
 wordcloud
-textblob
+matplotlib
+transformers
+torch
