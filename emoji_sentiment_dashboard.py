@@ -9,7 +9,7 @@ from transformers import AutoTokenizer, AutoModelForSequenceClassification
 import torch
 import numpy as np
 
-# ✅ Must be the first Streamlit command
+# ✅ Page config must be the first Streamlit command
 st.set_page_config(page_title="App Review Dashboard", layout="wide")
 
 # ----------------------------------------
@@ -47,10 +47,13 @@ def load_roberta_model():
 tokenizer, model = load_roberta_model()
 labels = ['Negative', 'Neutral', 'Positive']
 
+# ✅ Bug fix: remove token_type_ids to avoid RoBERTa CPU crash
 def analyze_text_sentiment(text):
     if not text.strip():
         return "Neutral"
     tokens = tokenizer(text, return_tensors="pt", truncation=True, padding=True)
+    if 'token_type_ids' in tokens:
+        del tokens['token_type_ids']
     with torch.no_grad():
         output = model(**tokens)
     scores = torch.nn.functional.softmax(output.logits, dim=1).squeeze().numpy()
@@ -186,7 +189,7 @@ if not conflict_counts.empty:
 else:
     st.info("✅ No conflicting sentiment found in current selection.")
 
-# Most Frequent Emojis by Sentiment (with readable x-axis labels)
+# Most Frequent Emojis by Sentiment (with readable labels)
 st.subheader("🧮 Most Frequent Emojis by Sentiment")
 if not filtered.empty:
     emoji_sentiment_map = {}
