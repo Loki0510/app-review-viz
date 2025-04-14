@@ -9,7 +9,7 @@ from transformers import AutoTokenizer, AutoModelForSequenceClassification
 import torch
 import numpy as np
 
-# ✅ Page config must be the first Streamlit command
+# ✅ Streamlit setup (MUST be first)
 st.set_page_config(page_title="App Review Dashboard", layout="wide")
 
 # ----------------------------------------
@@ -36,7 +36,7 @@ def load_data():
     return df
 
 # ----------------------------------------
-# Load RoBERTa Sentiment Model
+# Load RoBERTa Model
 # ----------------------------------------
 @st.cache_resource
 def load_roberta_model():
@@ -47,20 +47,24 @@ def load_roberta_model():
 tokenizer, model = load_roberta_model()
 labels = ['Negative', 'Neutral', 'Positive']
 
-# ✅ Bug fix: remove token_type_ids to avoid RoBERTa CPU crash
+# ✅ SAFELY tokenize without token_type_ids
 def analyze_text_sentiment(text):
     if not text.strip():
         return "Neutral"
-    tokens = tokenizer(text, return_tensors="pt", truncation=True, padding=True)
-    if 'token_type_ids' in tokens:
-        del tokens['token_type_ids']
+    tokens = tokenizer(
+        text,
+        return_tensors="pt",
+        truncation=True,
+        padding=True,
+        return_token_type_ids=False  # Prevent token_type_ids that cause error
+    )
     with torch.no_grad():
         output = model(**tokens)
     scores = torch.nn.functional.softmax(output.logits, dim=1).squeeze().numpy()
     return labels[np.argmax(scores)]
 
 # ----------------------------------------
-# Emoji Sentiment Setup
+# Emoji Sentiment Functions
 # ----------------------------------------
 emoji_sentiment = {
     '😍': 'positive', '👍': 'positive', '💪': 'positive', '😊': 'positive', '😃': 'positive',
@@ -83,7 +87,7 @@ def classify_sentiment(emojis):
         return 'Neutral'
 
 # ----------------------------------------
-# Streamlit UI
+# Main Streamlit App
 # ----------------------------------------
 st.title("📊 App Review Emoji & Text Sentiment Comparison")
 
@@ -110,7 +114,7 @@ filtered = df[
     (df['date'] <= pd.to_datetime(date_range[1]))
 ]
 
-# Sentiment Trend Over Time
+# 📈 Sentiment Trend Chart
 st.subheader(f"📈 Sentiment Trend for {app_selected} - v{version_selected}")
 if not filtered.empty:
     trend_df = filtered.groupby([filtered['date'].dt.to_period("M"), 'sentiment']).size().unstack(fill_value=0)
@@ -123,7 +127,7 @@ if not filtered.empty:
 else:
     st.warning("No reviews found for selected filters.")
 
-# Comparison Bar Chart
+# 📊 Review Content vs Emoji Sentiment
 st.subheader("📊 Comparison of Review Content vs Emoji Sentiment")
 if not filtered.empty:
     text_counts = filtered['text_sentiment'].value_counts().rename("Review Content")
@@ -132,9 +136,9 @@ if not filtered.empty:
 
     fig, ax = plt.subplots()
     combined.plot(kind='bar', stacked=True, ax=ax, color=["#0056b3", "#66ccff"])
-    ax.set_title("Comparison of Review Content vs Emoji Sentiment", fontsize=14)
-    ax.set_xlabel("Sentiment Type", fontsize=12)
-    ax.set_ylabel("Number of Reviews", fontsize=12)
+    ax.set_title("Comparison of Review Content vs Emoji Sentiment")
+    ax.set_xlabel("Sentiment Type")
+    ax.set_ylabel("Number of Reviews")
     ax.legend(title="Sentiment Type")
     for container in ax.containers:
         ax.bar_label(container, label_type="center", fontsize=10)
@@ -142,7 +146,7 @@ if not filtered.empty:
 else:
     st.info("No data available for sentiment comparison.")
 
-# Sentiment Over Time (Text vs Emoji)
+# 📉 Sentiment Over Time (Text vs Emoji)
 st.subheader("📉 Sentiment Over Time (Text vs Emoji)")
 if not filtered.empty:
     df_monthly = filtered.copy()
@@ -163,7 +167,7 @@ if not filtered.empty:
 else:
     st.info("📭 No data available to plot monthly sentiment trends.")
 
-# Conflicting Sentiment Pie Chart
+# 🥧 Conflicting Sentiment Pie Chart
 st.subheader("🥧 Conflicting Sentiment: Text vs Emoji")
 conflict_filtered = filtered[
     ((filtered['text_sentiment'] == 'Positive') & (filtered['sentiment'] == 'Negative')) |
@@ -189,7 +193,7 @@ if not conflict_counts.empty:
 else:
     st.info("✅ No conflicting sentiment found in current selection.")
 
-# Most Frequent Emojis by Sentiment (with readable labels)
+# 🧮 Most Frequent Emojis by Sentiment (Named X-axis)
 st.subheader("🧮 Most Frequent Emojis by Sentiment")
 if not filtered.empty:
     emoji_sentiment_map = {}
@@ -203,7 +207,6 @@ if not filtered.empty:
     top_emojis = emoji_df.sum(axis=1).sort_values(ascending=False).head(10).index
     emoji_subset = emoji_df.loc[top_emojis]
 
-    # Convert emojis to readable labels
     emoji_labels = [emoji.demojize(e).replace(":", "").replace("_", " ").title() for e in top_emojis]
 
     fig, ax = plt.subplots(figsize=(10, 5))
@@ -218,6 +221,6 @@ if not filtered.empty:
 else:
     st.info("No emoji data available for this selection.")
 
-# Sample Reviews Table
+# 📝 Sample Reviews Table
 st.subheader("📝 Sample Reviews")
 st.dataframe(filtered[['date', 'review', 'sentiment', 'text_sentiment']], use_container_width=True)
