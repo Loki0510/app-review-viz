@@ -9,6 +9,9 @@ from transformers import AutoTokenizer, AutoModelForSequenceClassification
 import torch
 import numpy as np
 
+# ✅ Must be the first Streamlit command
+st.set_page_config(page_title="App Review Dashboard", layout="wide")
+
 # ----------------------------------------
 # Load and Combine CSV Files
 # ----------------------------------------
@@ -79,7 +82,6 @@ def classify_sentiment(emojis):
 # ----------------------------------------
 # Streamlit UI
 # ----------------------------------------
-st.set_page_config(page_title="App Review Dashboard", layout="wide")
 st.title("📊 App Review Emoji & Text Sentiment Comparison")
 
 df = load_data()
@@ -184,7 +186,7 @@ if not conflict_counts.empty:
 else:
     st.info("✅ No conflicting sentiment found in current selection.")
 
-# Most Frequent Emojis by Sentiment (with labels)
+# Most Frequent Emojis by Sentiment (with readable x-axis labels)
 st.subheader("🧮 Most Frequent Emojis by Sentiment")
 if not filtered.empty:
     emoji_sentiment_map = {}
