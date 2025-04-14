@@ -9,7 +9,7 @@ from transformers import AutoTokenizer, AutoModelForSequenceClassification
 import torch
 import numpy as np
 
-# ✅ Streamlit setup (MUST be first)
+# ✅ Page setup
 st.set_page_config(page_title="App Review Dashboard", layout="wide")
 
 # ----------------------------------------
@@ -36,35 +36,27 @@ def load_data():
     return df
 
 # ----------------------------------------
-# Load RoBERTa Model
+# Load DistilBERT Sentiment Model
 # ----------------------------------------
 @st.cache_resource
-def load_roberta_model():
-    tokenizer = AutoTokenizer.from_pretrained("cardiffnlp/twitter-roberta-base-sentiment")
-    model = AutoModelForSequenceClassification.from_pretrained("cardiffnlp/twitter-roberta-base-sentiment")
+def load_sentiment_model():
+    tokenizer = AutoTokenizer.from_pretrained("distilbert-base-uncased-finetuned-sst-2-english")
+    model = AutoModelForSequenceClassification.from_pretrained("distilbert-base-uncased-finetuned-sst-2-english")
     return tokenizer, model
 
-tokenizer, model = load_roberta_model()
-labels = ['Negative', 'Neutral', 'Positive']
+tokenizer, model = load_sentiment_model()
 
-# ✅ SAFELY tokenize without token_type_ids
 def analyze_text_sentiment(text):
     if not text.strip():
         return "Neutral"
-    tokens = tokenizer(
-        text,
-        return_tensors="pt",
-        truncation=True,
-        padding=True,
-        return_token_type_ids=False  # Prevent token_type_ids that cause error
-    )
+    tokens = tokenizer(text, return_tensors="pt", truncation=True, padding=True)
     with torch.no_grad():
         output = model(**tokens)
     scores = torch.nn.functional.softmax(output.logits, dim=1).squeeze().numpy()
-    return labels[np.argmax(scores)]
+    return "Positive" if np.argmax(scores) == 1 else "Negative"
 
 # ----------------------------------------
-# Emoji Sentiment Functions
+# Emoji Sentiment Setup
 # ----------------------------------------
 emoji_sentiment = {
     '😍': 'positive', '👍': 'positive', '💪': 'positive', '😊': 'positive', '😃': 'positive',
@@ -87,7 +79,7 @@ def classify_sentiment(emojis):
         return 'Neutral'
 
 # ----------------------------------------
-# Main Streamlit App
+# Streamlit UI
 # ----------------------------------------
 st.title("📊 App Review Emoji & Text Sentiment Comparison")
 
@@ -95,7 +87,7 @@ df = load_data()
 df['emojis'] = df['review'].apply(extract_emojis)
 df['sentiment'] = df['emojis'].apply(classify_sentiment)
 
-with st.spinner("Analyzing text sentiment using RoBERTa..."):
+with st.spinner("Analyzing text sentiment using DistilBERT..."):
     df['text_sentiment'] = df['review'].apply(analyze_text_sentiment)
 
 # Sidebar Filters
@@ -193,7 +185,7 @@ if not conflict_counts.empty:
 else:
     st.info("✅ No conflicting sentiment found in current selection.")
 
-# 🧮 Most Frequent Emojis by Sentiment (Named X-axis)
+# 🧮 Most Frequent Emojis by Sentiment
 st.subheader("🧮 Most Frequent Emojis by Sentiment")
 if not filtered.empty:
     emoji_sentiment_map = {}
@@ -206,7 +198,6 @@ if not filtered.empty:
     emoji_df = pd.DataFrame.from_dict(emoji_sentiment_map, orient='index')
     top_emojis = emoji_df.sum(axis=1).sort_values(ascending=False).head(10).index
     emoji_subset = emoji_df.loc[top_emojis]
-
     emoji_labels = [emoji.demojize(e).replace(":", "").replace("_", " ").title() for e in top_emojis]
 
     fig, ax = plt.subplots(figsize=(10, 5))
