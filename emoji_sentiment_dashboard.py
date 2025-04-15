@@ -79,9 +79,6 @@ available_versions = sorted(df['appVersion'].unique(), reverse=True)
 version_selected = st.sidebar.selectbox("Select Version", available_versions)
 date_range = st.sidebar.date_input("Select Date Range", [df['date'].min(), df['date'].max()])
 
-# 📊 Choose Trend View Mode
-trend_mode = st.sidebar.radio("Sentiment Trend View Mode", ["Raw Counts", "Normalized %"])
-
 # 📉 Apply filters
 filtered = df[
     (df['appVersion'] == version_selected) &
@@ -91,26 +88,18 @@ filtered = df[
 ]
 
 # ----------------------------------------
-# Sentiment Trend Over Time (Toggle: Counts / Percentages)
+# Sentiment Trend Over Time (Raw Counts Only)
 # ----------------------------------------
-st.subheader(f"📈 Sentiment Trend for {app_selected} - v{version_selected} ({trend_mode})")
+st.subheader(f"📈 Sentiment Trend for {app_selected} - v{version_selected}")
 
 if not filtered.empty:
     trend_df = filtered.groupby([filtered['date'].dt.to_period("M"), 'sentiment']).size().unstack(fill_value=0)
 
-    if trend_mode == "Normalized %":
-        trend_df = trend_df.divide(trend_df.sum(axis=1), axis=0) * 100
-        ylabel = "Percentage of Reviews"
-        title = "Sentiment Trend Over Time (Normalized %)"
-    else:
-        ylabel = "Number of Reviews"
-        title = "Sentiment Trend Over Time"
-
     fig, ax = plt.subplots()
     trend_df.plot(ax=ax)
-    ax.set_title(title, fontsize=14)
+    ax.set_title("Sentiment Trend Over Time", fontsize=14)
     ax.set_xlabel("Month", fontsize=12)
-    ax.set_ylabel(ylabel, fontsize=12)
+    ax.set_ylabel("Number of Reviews", fontsize=12)
     ax.legend(title="Sentiment")
     st.pyplot(fig)
 else:
