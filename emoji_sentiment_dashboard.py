@@ -113,12 +113,12 @@ else:
 st.subheader("📊 Comparison of Review Content vs Emoji Sentiment")
 
 if not filtered.empty:
-    text_counts = filtered['text_sentiment'].value_counts().rename("Review Content")
+    text_counts = filtered['text_sentiment'].value_counts().rename("Review Sentiment")
     emoji_counts = filtered['sentiment'].value_counts().rename("Emoji Sentiment")
     combined = pd.concat([text_counts, emoji_counts], axis=1).fillna(0).astype(int)
 
     fig, ax = plt.subplots()
-    combined.plot(kind='bar', stacked=True, ax=ax, color=["#0056b3", "#66ccff"])
+    combined.plot(kind='bar', stacked=True, ax=ax, color=["#2ecc71", "#9b59b6"])
     ax.set_title("Comparison of Review Content vs Emoji Sentiment", fontsize=14)
     ax.set_xlabel("Sentiment Type", fontsize=12)
     ax.set_ylabel("Number of Reviews", fontsize=12)
@@ -167,6 +167,14 @@ conflict_filtered['combo_sentiment'] = (
     "Text: " + conflict_filtered['text_sentiment'] + " | Emoji: " + conflict_filtered['sentiment']
 )
 conflict_counts = conflict_filtered['combo_sentiment'].value_counts()
+
+
+total_reviews = len(filtered)
+conflicting_reviews = len(conflict_filtered)
+percentage_conflicting = (conflicting_reviews / total_reviews) * 100 if total_reviews > 0 else 0
+
+st.write(f"🔍 **{conflicting_reviews}** out of **{total_reviews}** reviews have conflicting sentiment.")
+st.write(f"📊 That's about **{percentage_conflicting:.2f}%** of the selected reviews.")
 
 if not conflict_counts.empty:
     fig, ax = plt.subplots()
