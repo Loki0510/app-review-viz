@@ -10,21 +10,15 @@ import matplotlib.font_manager as fm
 # Load and Combine CSV Files
 # ----------------------------------------
 @st.cache_data
-def load_data():
-    base_path = "Cleaned_app_reviews"
-
-    zoom_df = pd.read_csv(f"{base_path}/cleaned_zoom_reviews.csv")
-    webex_df = pd.read_csv(f"{base_path}/cleaned_webex_reviews.csv")
-    firefox_df = pd.read_csv(f"{base_path}/cleaned_firefox_reviews.csv")
-
-    zoom_df["app"] = "Zoom"
-    webex_df["app"] = "Webex"
-    firefox_df["app"] = "Firefox"
-
-    for df in [zoom_df, webex_df, firefox_df]:
-        df.rename(columns={'at': 'date', 'content': 'review'}, inplace=True)
-
-    df = pd.concat([zoom_df, webex_df, firefox_df], ignore_index=True)
+def load_data(app_name):
+    path_map = {
+        "Zoom": "Cleaned_app_reviews/cleaned_zoom_reviews.csv",
+        "Webex": "Cleaned_app_reviews/cleaned_webex_reviews.csv",
+        "Firefox": "Cleaned_app_reviews/cleaned_firefox_reviews.csv"
+    }
+    df = pd.read_csv(path_map[app_name])
+    df.rename(columns={'at': 'date', 'content': 'review'}, inplace=True)
+    df["app"] = app_name
     df['date'] = pd.to_datetime(df['date'], errors='coerce')
     df['review'] = df['review'].astype(str)
     df['appVersion'] = df['appVersion'].astype(str)
@@ -71,21 +65,23 @@ def analyze_text_sentiment(text):
 st.set_page_config(page_title="App Review Dashboard", layout="wide")
 st.title("📊 A Prototype for Visualizing Sentiment in App Reviews Over Time")
 
-df = load_data()
+
+st.sidebar.header("🔍 Filter Reviews")
+app_selected = st.sidebar.selectbox("Select App", ["Zoom", "Webex", "Firefox"])
+
+# ⏳ Load data for selected app only
+df = load_data(app_selected)
 df['emojis'] = df['review'].apply(extract_emojis)
 df['sentiment'] = df['emojis'].apply(classify_sentiment)
 df['text_sentiment'] = df['review'].apply(analyze_text_sentiment)
 
-# Sidebar Filters
-st.sidebar.header("🔍 Filter Reviews")
-app_selected = st.sidebar.selectbox("Select App", sorted(df['app'].unique()))
-available_versions = sorted(df[df['app'] == app_selected]['appVersion'].unique(), reverse=True)
+# 🔧 Continue filtering based on loaded data
+available_versions = sorted(df['appVersion'].unique(), reverse=True)
 version_selected = st.sidebar.selectbox("Select Version", available_versions)
 date_range = st.sidebar.date_input("Select Date Range", [df['date'].min(), df['date'].max()])
 
-# Apply Filters
+# 📉 Apply filters
 filtered = df[
-    (df['app'] == app_selected) &
     (df['appVersion'] == version_selected) &
     (df['sentiment'].isin(['Positive', 'Negative', 'Neutral'])) &
     (df['date'] >= pd.to_datetime(date_range[0])) &
@@ -113,21 +109,25 @@ else:
 st.subheader("📊 Comparison of Review Content vs Emoji Sentiment")
 
 if not filtered.empty:
-    text_counts = filtered['text_sentiment'].value_counts().rename("Review Content")
+    text_counts = filtered['text_sentiment'].value_counts().rename("Review Sentiment")
     emoji_counts = filtered['sentiment'].value_counts().rename("Emoji Sentiment")
     combined = pd.concat([text_counts, emoji_counts], axis=1).fillna(0).astype(int)
+    combined = combined.reindex(['Positive', 'Neutral', 'Negative'])
 
     fig, ax = plt.subplots()
-    combined.plot(kind='bar', stacked=True, ax=ax, color=["#0056b3", "#66ccff"])
+    combined.plot(kind='bar', stacked=False, ax=ax, color=["#2ecc71", "#9b59b6"])
     ax.set_title("Comparison of Review Content vs Emoji Sentiment", fontsize=14)
-    ax.set_xlabel("Sentiment Type", fontsize=12)
+    ax.set_xlabel("Sentiment", fontsize=12)
     ax.set_ylabel("Number of Reviews", fontsize=12)
-    ax.legend(title="Sentiment Type")
+    ax.legend(title="Source")
+
     for container in ax.containers:
-        ax.bar_label(container, label_type="center", fontsize=10)
+        ax.bar_label(container, label_type="edge", fontsize=10)
+
     st.pyplot(fig)
 else:
     st.info("No data available for sentiment comparison.")
+
 
 # ----------------------------------------
 # Sentiment Over Time (Text vs Emoji)
@@ -167,6 +167,14 @@ conflict_filtered['combo_sentiment'] = (
     "Text: " + conflict_filtered['text_sentiment'] + " | Emoji: " + conflict_filtered['sentiment']
 )
 conflict_counts = conflict_filtered['combo_sentiment'].value_counts()
+
+
+total_reviews = len(filtered)
+conflicting_reviews = len(conflict_filtered)
+percentage_conflicting = (conflicting_reviews / total_reviews) * 100 if total_reviews > 0 else 0
+
+st.write(f"🔍 **{conflicting_reviews}** out of **{total_reviews}** reviews have conflicting sentiment.")
+st.write(f"📊 That's about **{percentage_conflicting:.2f}%** of the selected reviews.")
 
 if not conflict_counts.empty:
     fig, ax = plt.subplots()
