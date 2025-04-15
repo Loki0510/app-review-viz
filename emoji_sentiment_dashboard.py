@@ -65,7 +65,6 @@ def analyze_text_sentiment(text):
 st.set_page_config(page_title="App Review Dashboard", layout="wide")
 st.title("📊 A Prototype for Visualizing Sentiment in App Reviews Over Time")
 
-
 st.sidebar.header("🔍 Filter Reviews")
 app_selected = st.sidebar.selectbox("Select App", ["Zoom", "Webex", "Firefox"])
 
@@ -128,7 +127,6 @@ if not filtered.empty:
 else:
     st.info("No data available for sentiment comparison.")
 
-
 # ----------------------------------------
 # Sentiment Over Time (Text vs Emoji)
 # ----------------------------------------
@@ -167,7 +165,6 @@ conflict_filtered['combo_sentiment'] = (
     "Text: " + conflict_filtered['text_sentiment'] + " | Emoji: " + conflict_filtered['sentiment']
 )
 conflict_counts = conflict_filtered['combo_sentiment'].value_counts()
-
 
 total_reviews = len(filtered)
 conflicting_reviews = len(conflict_filtered)
