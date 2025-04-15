@@ -69,7 +69,7 @@ def analyze_text_sentiment(text):
 # Streamlit UI
 # ----------------------------------------
 st.set_page_config(page_title="App Review Dashboard", layout="wide")
-st.title("📊 App Review Emoji & Text Sentiment Comparison")
+st.title("📊 A Prototype for Visualizing Sentiment in App Reviews Over Time")
 
 df = load_data()
 df['emojis'] = df['review'].apply(extract_emojis)
