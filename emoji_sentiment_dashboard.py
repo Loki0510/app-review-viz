@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 from textblob import TextBlob
 import matplotlib.font_manager as fm
 import os
+import platform
 
 # ----------------------------------------
 # Load and Combine CSV Files
@@ -188,7 +189,7 @@ if not conflict_counts.empty:
 else:
     st.info("\u2705 No conflicting sentiment found in current selection.")
 
-# Most Frequent Emojis by Sentiment (Emoji font fix for Windows)
+# Most Frequent Emojis by Sentiment (cross-platform font fallback)
 st.subheader("\U0001F9EE Most Frequent Emojis by Sentiment")
 if not filtered.empty:
     emoji_sentiment_map = {}
@@ -202,9 +203,12 @@ if not filtered.empty:
     top_emojis = emoji_df.sum(axis=1).sort_values(ascending=False).head(10).index
     emoji_subset = emoji_df.loc[top_emojis]
 
-    # Load emoji-supporting font
-    emoji_font_path = "C:/Windows/Fonts/seguiemj.ttf"
-    font_prop = fm.FontProperties(fname=emoji_font_path)
+    # Set emoji font based on platform
+    if platform.system() == "Windows":
+        emoji_font_path = "C:/Windows/Fonts/seguiemj.ttf"
+        font_prop = fm.FontProperties(fname=emoji_font_path) if os.path.exists(emoji_font_path) else None
+    else:
+        font_prop = None
 
     fig, ax = plt.subplots(figsize=(10, 5))
     emoji_subset.plot(kind="bar", stacked=True, ax=ax)
@@ -212,7 +216,10 @@ if not filtered.empty:
     ax.set_ylabel("Count")
     ax.set_xlabel("Emoji")
     ax.set_xticks(range(len(top_emojis)))
-    ax.set_xticklabels(top_emojis, fontproperties=font_prop, fontsize=16)
+    if font_prop:
+        ax.set_xticklabels(top_emojis, fontproperties=font_prop, fontsize=16)
+    else:
+        ax.set_xticklabels(top_emojis, fontsize=16)
     ax.legend(title="Sentiment")
     st.pyplot(fig)
 else:
