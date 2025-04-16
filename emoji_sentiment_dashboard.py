@@ -5,6 +5,7 @@ from wordcloud import WordCloud
 import matplotlib.pyplot as plt
 from textblob import TextBlob
 import matplotlib.font_manager as fm
+import os
 
 # ----------------------------------------
 # Load and Combine CSV Files
@@ -51,7 +52,6 @@ emoji_sentiment = {
     '😡😡': 'negative', '😑': 'negative', '🙄': 'negative'
 }
 
-
 def extract_emojis(text):
     return [ch for ch in text if ch in emoji.EMOJI_DATA]
 
@@ -83,23 +83,21 @@ def analyze_text_sentiment(text):
 # Streamlit UI
 # ----------------------------------------
 st.set_page_config(page_title="App Review Dashboard", layout="wide")
-st.title("📊 A Prototype for Visualizing Sentiment in App Reviews Over Time")
+st.title("\U0001F4CA A Prototype for Visualizing Sentiment in App Reviews Over Time")
 
-st.sidebar.header("🔍 Filter Reviews")
+st.sidebar.header("\U0001F50D Filter Reviews")
 app_selected = st.sidebar.selectbox("Select App", ["Zoom", "Webex", "Firefox"])
 
-# ⏳ Load data for selected app only
+# Load data for selected app only
 df = load_data(app_selected)
 df['emojis'] = df['review'].apply(extract_emojis)
 df['sentiment'] = df['emojis'].apply(classify_sentiment)
 df['text_sentiment'] = df['review'].apply(analyze_text_sentiment)
 
-# 🔧 Continue filtering based on loaded data
 available_versions = sorted(df['appVersion'].unique(), reverse=True)
 version_selected = st.sidebar.selectbox("Select Version", available_versions)
 date_range = st.sidebar.date_input("Select Date Range", [df['date'].min(), df['date'].max()])
 
-# 📉 Apply filters
 filtered = df[
     (df['appVersion'] == version_selected) &
     (df['sentiment'].isin(['Positive', 'Negative', 'Neutral'])) &
@@ -107,14 +105,10 @@ filtered = df[
     (df['date'] <= pd.to_datetime(date_range[1]))
 ]
 
-# ----------------------------------------
-# Sentiment Trend Over Time (Raw Counts Only)
-# ----------------------------------------
-st.subheader(f"📈 Sentiment Trend for {app_selected} - v{version_selected}")
-
+# Sentiment Trend Over Time
+st.subheader(f"\U0001F4C8 Sentiment Trend for {app_selected} - v{version_selected}")
 if not filtered.empty:
     trend_df = filtered.groupby([filtered['date'].dt.to_period("M"), 'sentiment']).size().unstack(fill_value=0)
-
     fig, ax = plt.subplots()
     trend_df.plot(ax=ax)
     ax.set_title("Sentiment Trend Over Time", fontsize=14)
@@ -125,11 +119,8 @@ if not filtered.empty:
 else:
     st.warning("No reviews found for selected filters.")
 
-# ----------------------------------------
-# Stacked Bar Chart: Review Content vs Emoji Sentiment
-# ----------------------------------------
-st.subheader("📊 Comparison of Review Content vs Emoji Sentiment")
-
+# Comparison Chart
+st.subheader("\U0001F4CA Comparison of Review Content vs Emoji Sentiment")
 if not filtered.empty:
     text_counts = filtered['text_sentiment'].value_counts().rename("Review Sentiment")
     emoji_counts = filtered['sentiment'].value_counts().rename("Emoji Sentiment")
@@ -142,28 +133,21 @@ if not filtered.empty:
     ax.set_xlabel("Sentiment", fontsize=12)
     ax.set_ylabel("Number of Reviews", fontsize=12)
     ax.legend(title="Source")
-
     for container in ax.containers:
         ax.bar_label(container, label_type="edge", fontsize=10)
-
     st.pyplot(fig)
 else:
     st.info("No data available for sentiment comparison.")
 
-# ----------------------------------------
 # Sentiment Over Time (Text vs Emoji)
-# ----------------------------------------
-st.subheader("📉 Sentiment Over Time (Text vs Emoji)")
-
+st.subheader("\U0001F4C9 Sentiment Over Time (Text vs Emoji)")
 if not filtered.empty:
     df_monthly = filtered.copy()
     df_monthly['month'] = df_monthly['date'].dt.to_period("M").dt.to_timestamp()
-
     monthly_summary = pd.DataFrame({
         'text_sentiment_count': df_monthly[df_monthly['text_sentiment'] != 'Neutral'].groupby('month').size(),
         'emoji_sentiment_count': df_monthly[df_monthly['sentiment'] != 'Neutral'].groupby('month').size()
     }).fillna(0)
-
     fig, ax = plt.subplots()
     monthly_summary.plot(ax=ax, linewidth=2)
     ax.set_title("Sentiment Over Time (Text vs Emoji)")
@@ -172,30 +156,23 @@ if not filtered.empty:
     ax.legend(title="Source")
     st.pyplot(fig)
 else:
-    st.info("📭 No data available to plot monthly sentiment trends.")
+    st.info("\U0001F4ED No data available to plot monthly sentiment trends.")
 
-# ----------------------------------------
 # Conflicting Sentiment Pie Chart
-# ----------------------------------------
-st.subheader("🥧 Conflicting Sentiment: Text vs Emoji")
-
+st.subheader("\U0001F967 Conflicting Sentiment: Text vs Emoji")
 conflict_filtered = filtered[
     ((filtered['text_sentiment'] == 'Positive') & (filtered['sentiment'] == 'Negative')) |
     ((filtered['text_sentiment'] == 'Negative') & (filtered['sentiment'] == 'Positive'))
 ]
-
 conflict_filtered['combo_sentiment'] = (
     "Text: " + conflict_filtered['text_sentiment'] + " | Emoji: " + conflict_filtered['sentiment']
 )
 conflict_counts = conflict_filtered['combo_sentiment'].value_counts()
-
 total_reviews = len(filtered)
 conflicting_reviews = len(conflict_filtered)
 percentage_conflicting = (conflicting_reviews / total_reviews) * 100 if total_reviews > 0 else 0
-
-st.write(f"🔍 **{conflicting_reviews}** out of **{total_reviews}** reviews have conflicting sentiment.")
-st.write(f"📊 That's about **{percentage_conflicting:.2f}%** of the selected reviews.")
-
+st.write(f"\U0001F50D **{conflicting_reviews}** out of **{total_reviews}** reviews have conflicting sentiment.")
+st.write(f"\U0001F4CA That's about **{percentage_conflicting:.2f}%** of the selected reviews.")
 if not conflict_counts.empty:
     fig, ax = plt.subplots()
     wedges, _, autotexts = ax.pie(
@@ -209,13 +186,10 @@ if not conflict_counts.empty:
     ax.axis('equal')
     st.pyplot(fig)
 else:
-    st.info("✅ No conflicting sentiment found in current selection.")
+    st.info("\u2705 No conflicting sentiment found in current selection.")
 
-# ----------------------------------------
-# Most Frequent Emojis by Sentiment (with fixed x-axis)
-# ----------------------------------------
-st.subheader("🧮 Most Frequent Emojis by Sentiment")
-
+# Most Frequent Emojis by Sentiment (Emoji font fix for Windows)
+st.subheader("\U0001F9EE Most Frequent Emojis by Sentiment")
 if not filtered.empty:
     emoji_sentiment_map = {}
     for emojis, sentiment in zip(filtered['emojis'], filtered['sentiment']):
@@ -228,8 +202,9 @@ if not filtered.empty:
     top_emojis = emoji_df.sum(axis=1).sort_values(ascending=False).head(10).index
     emoji_subset = emoji_df.loc[top_emojis]
 
-    # Set font that supports emojis
-    font_prop = fm.FontProperties(family='Segoe UI Emoji')
+    # Load emoji-supporting font
+    emoji_font_path = "C:/Windows/Fonts/seguiemj.ttf"
+    font_prop = fm.FontProperties(fname=emoji_font_path)
 
     fig, ax = plt.subplots(figsize=(10, 5))
     emoji_subset.plot(kind="bar", stacked=True, ax=ax)
@@ -243,8 +218,6 @@ if not filtered.empty:
 else:
     st.info("No emoji data available for this selection.")
 
-# ----------------------------------------
 # Sample Reviews Table
-# ----------------------------------------
-st.subheader("📝 Sample Reviews")
+st.subheader("\U0001F4DD Sample Reviews")
 st.dataframe(filtered[['date', 'review', 'sentiment', 'text_sentiment']], use_container_width=True)
