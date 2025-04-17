@@ -91,7 +91,7 @@ filtered = df[
 # ----------------------------------------
 # Sentiment Trend Over Time
 # ----------------------------------------
-st.subheader(f"📈 Sentiment Trend for {app_selected} - v{version_selected}")
+st.subheader(f"📈 Sentiment Trend for {app_selected} - version: {version_selected}")
 if not filtered.empty:
     trend_df = filtered.groupby([filtered['date'].dt.to_period("M"), 'sentiment']).size().unstack(fill_value=0)
     fig, ax = plt.subplots()
@@ -222,6 +222,31 @@ if not filtered.empty:
     st.pyplot(fig)
 else:
     st.info("No emoji data available for this selection.")
+
+# ----------------------------------------
+# Score Frequency & Average
+# ----------------------------------------
+st.subheader(f"📊 Frequency and Average Score for {app_selected} - version:{version_selected}")
+
+if not filtered.empty:
+    # Calculate frequency of scores
+    score_counts = filtered['score'].value_counts().sort_index()
+    
+    # Calculate average score
+    average_score = filtered['score'].mean()
+
+    # Display Average Score
+    st.write(f"📉 **Average Score**: {average_score:.2f}")
+
+    # Display Frequency of Scores
+    st.write("🔢 **Score Frequency Distribution**")
+    
+    
+    st.bar_chart(score_counts)
+
+    
+else:
+    st.info("No reviews available for the selected filters to calculate scores.")
 
 # ----------------------------------------
 # Sample Reviews Table
