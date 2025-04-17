@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import emoji
-from wordcloud import WordCloud
 import matplotlib.pyplot as plt
 from textblob import TextBlob
 import matplotlib.font_manager as fm
@@ -71,20 +70,17 @@ def analyze_text_sentiment(text):
     else:
         return "Neutral"
 
-# Streamlit UI
+# Streamlit App Configuration
 st.set_page_config(page_title="App Review Dashboard", layout="wide")
 st.title("📊 A Prototype for Visualizing Sentiment in App Reviews Over Time")
 
+# Sidebar Filters
 st.sidebar.header("🔍 Filter Reviews")
 app_selected = st.sidebar.selectbox("Select App", ["Zoom", "Webex", "Firefox"])
 df = load_data(app_selected)
 df['emojis'] = df['review'].apply(extract_emojis)
 df['text_sentiment'] = df['review'].apply(analyze_text_sentiment)
-
-def combined_sentiment(row):
-    return "No Emoji" if not row['emojis'] else classify_sentiment(row['emojis'])
-
-df['sentiment'] = df.apply(combined_sentiment, axis=1)
+df['sentiment'] = df.apply(lambda row: "No Emoji" if not row['emojis'] else classify_sentiment(row['emojis']), axis=1)
 
 available_versions = sorted(df['appVersion'].unique(), reverse=True)
 version_selected = st.sidebar.selectbox("Select Version", available_versions)
@@ -97,8 +93,36 @@ filtered = df[
     (df['date'] <= pd.to_datetime(date_range[1]))
 ]
 
-# 📈 Sentiment Trend
-st.subheader(f"📈 Sentiment Trend for {app_selected} - version: {version_selected}")
+# 📊 Overall Sentiment Distribution Across All Versions
+st.subheader("📊 Overall Sentiment Distribution (All Versions)")
+
+if not df.empty:
+    emoji_sentiment_counts = df['sentiment'].value_counts().reindex(['Positive', 'Neutral', 'Negative', 'No Emoji'], fill_value=0)
+    text_sentiment_counts = df['text_sentiment'].value_counts().reindex(['Positive', 'Neutral', 'Negative'], fill_value=0)
+
+    # Align both in a DataFrame
+    overall_df = pd.concat([emoji_sentiment_counts, text_sentiment_counts], axis=1)
+    overall_df.columns = ["Emoji Sentiment", "Text Sentiment"]
+    overall_df = overall_df.fillna(0).astype(int)
+
+    fig, ax = plt.subplots()
+    overall_df.plot(kind="bar", ax=ax, color=["#95a5a6", "#2980b9"])
+    ax.set_title("Total Reviews by Sentiment (All Versions)")
+    ax.set_ylabel("Number of Reviews")
+    ax.set_xlabel("Sentiment Category")
+    ax.legend(title="Sentiment Source")
+    ax.set_xticklabels(overall_df.index, rotation=45)
+    for container in ax.containers:
+        ax.bar_label(container, label_type="edge", fontsize=9)
+    st.pyplot(fig)
+
+
+# Other Visuals from Code 1 (trend, comparison, emoji frequency, etc.)
+# 👇 Include rest of Code 1 below this point...
+# Due to length, I can paste this in next reply or upload as a `.py` file if you want.
+
+# 📈 Sentiment Trend Over Time
+st.subheader(f"📈 Sentiment Trend Over Time (Total Reviews: {len(filtered)})")
 if not filtered.empty:
     trend_df = filtered.groupby([filtered['date'].dt.to_period("M"), 'sentiment']).size().unstack(fill_value=0)
     fig, ax = plt.subplots()
@@ -110,14 +134,13 @@ if not filtered.empty:
 else:
     st.warning("No reviews found for selected filters.")
 
-# 📊 Text vs Emoji Sentiment Comparison
+# 📊 Comparison of Review Content vs Emoji Sentiment
 st.subheader("📊 Comparison of Review Content vs Emoji Sentiment")
 if not filtered.empty:
     text_counts = filtered['text_sentiment'].value_counts().rename("Review Sentiment")
     emoji_counts = filtered['sentiment'].value_counts().rename("Emoji Sentiment")
     combined = pd.concat([text_counts, emoji_counts], axis=1).fillna(0).astype(int)
     combined = combined.reindex(['Positive', 'Neutral', 'Negative', 'No Emoji'])
-
     fig, ax = plt.subplots()
     combined.plot(kind='bar', stacked=False, ax=ax, color=["#2ecc71", "#9b59b6"])
     ax.set_title("Comparison of Review Content vs Emoji Sentiment")
@@ -182,7 +205,7 @@ else:
 
 # 📊 Score Frequency & Average
 st.subheader(f"📊 Frequency and Average Score for {app_selected} - version:{version_selected}")
-if not filtered.empty:
+if not filtered.empty and 'score' in filtered.columns:
     score_counts = filtered['score'].value_counts().sort_index()
     average_score = filtered['score'].mean()
     st.write(f"📉 **Average Score**: {average_score:.2f}")
@@ -198,7 +221,7 @@ st.dataframe(
     use_container_width=True
 )
 
-# 📊 Positive Emoji Frequency Plot
+# 📊 Positive Emoji Frequency Bar Plot
 st.subheader("📊 Positive Emoji Frequency (Sample Reviews)")
 if not filtered.empty:
     all_emojis = [e for review in filtered['review'] for e in extract_emojis(review)]
@@ -230,7 +253,7 @@ if not filtered.empty:
 else:
     st.info("No reviews available to extract emojis.")
 
-# 📊 Negative Emoji Frequency Plot
+# 📊 Negative Emoji Frequency Bar Plot
 st.subheader("📊 Negative Emoji Frequency (Sample Reviews)")
 if not filtered.empty:
     emoji_rows = []
