@@ -70,7 +70,7 @@ def analyze_text_sentiment(text):
     else:
         return "Neutral"
 
-# Streamlit App Configuration
+# Streamlit App Config
 st.set_page_config(page_title="App Review Dashboard", layout="wide")
 st.title("📊 A Prototype for Visualizing Sentiment in App Reviews Over Time")
 
@@ -93,33 +93,23 @@ filtered = df[
     (df['date'] <= pd.to_datetime(date_range[1]))
 ]
 
-# 📊 Overall Sentiment Distribution Across All Versions
+# 📊 Overall Sentiment Distribution
 st.subheader("📊 Overall Sentiment Distribution (All Versions)")
-
 if not df.empty:
     emoji_sentiment_counts = df['sentiment'].value_counts().reindex(['Positive', 'Neutral', 'Negative', 'No Emoji'], fill_value=0)
     text_sentiment_counts = df['text_sentiment'].value_counts().reindex(['Positive', 'Neutral', 'Negative'], fill_value=0)
-
-    # Align both in a DataFrame
     overall_df = pd.concat([emoji_sentiment_counts, text_sentiment_counts], axis=1)
     overall_df.columns = ["Emoji Sentiment", "Text Sentiment"]
-    overall_df = overall_df.fillna(0).astype(int)
-
     fig, ax = plt.subplots()
     overall_df.plot(kind="bar", ax=ax, color=["#95a5a6", "#2980b9"])
     ax.set_title("Total Reviews by Sentiment (All Versions)")
     ax.set_ylabel("Number of Reviews")
     ax.set_xlabel("Sentiment Category")
-    ax.legend(title="Sentiment Source")
     ax.set_xticklabels(overall_df.index, rotation=45)
+    ax.legend(title="Sentiment Source")
     for container in ax.containers:
         ax.bar_label(container, label_type="edge", fontsize=9)
     st.pyplot(fig)
-
-
-# Other Visuals from Code 1 (trend, comparison, emoji frequency, etc.)
-# 👇 Include rest of Code 1 below this point...
-# Due to length, I can paste this in next reply or upload as a `.py` file if you want.
 
 # 📈 Sentiment Trend Over Time
 st.subheader(f"📈 Sentiment Trend Over Time (Total Reviews: {len(filtered)})")
@@ -131,9 +121,6 @@ if not filtered.empty:
     ax.set_xlabel("Month")
     ax.set_ylabel("Number of Reviews")
     st.pyplot(fig)
-else:
-    st.warning("No reviews found for selected filters.")
-
 # 📊 Comparison of Review Content vs Emoji Sentiment
 st.subheader("📊 Comparison of Review Content vs Emoji Sentiment")
 if not filtered.empty:
@@ -150,8 +137,6 @@ if not filtered.empty:
     for container in ax.containers:
         ax.bar_label(container, label_type="edge", fontsize=10)
     st.pyplot(fig)
-else:
-    st.info("No data available for sentiment comparison.")
 
 # 📉 Sentiment Over Time (Text vs Emoji)
 st.subheader("📉 Sentiment Over Time (Text vs Emoji)")
@@ -167,10 +152,7 @@ if not filtered.empty:
     ax.set_title("Sentiment Over Time (Text vs Emoji)")
     ax.set_xlabel("Month")
     ax.set_ylabel("Number of Reviews")
-    ax.legend(title="Source")
     st.pyplot(fig)
-else:
-    st.info("📭 No data available to plot monthly sentiment trends.")
 
 # 🥧 Conflicting Sentiment Pie Chart
 st.subheader("🥧 Conflicting Sentiment: Text vs Emoji")
@@ -185,34 +167,35 @@ conflict_counts = conflict_filtered['combo_sentiment'].value_counts()
 total_reviews = len(filtered)
 conflicting_reviews = len(conflict_filtered)
 percentage_conflicting = (conflicting_reviews / total_reviews) * 100 if total_reviews > 0 else 0
-
 st.write(f"🔍 **{conflicting_reviews}** out of **{total_reviews}** reviews have conflicting sentiment.")
 st.write(f"📊 That's about **{percentage_conflicting:.2f}%** of the selected reviews.")
 if not conflict_counts.empty:
     fig, ax = plt.subplots()
-    wedges, _, autotexts = ax.pie(
-        conflict_counts,
-        labels=None,
-        autopct='%1.1f%%',
-        startangle=90
-    )
+    wedges, _, autotexts = ax.pie(conflict_counts, labels=None, autopct='%1.1f%%', startangle=90)
     ax.legend(wedges, conflict_counts.index, title="Sentiment Pairs", loc="center left", bbox_to_anchor=(1, 0.5))
     ax.set_title("Conflicting Sentiment (Text vs Emoji)")
     ax.axis('equal')
     st.pyplot(fig)
-else:
-    st.info("✅ No conflicting sentiment found in current selection.")
 
-# 📊 Score Frequency & Average
-st.subheader(f"📊 Frequency and Average Score for {app_selected} - version:{version_selected}")
-if not filtered.empty and 'score' in filtered.columns:
-    score_counts = filtered['score'].value_counts().sort_index()
-    average_score = filtered['score'].mean()
-    st.write(f"📉 **Average Score**: {average_score:.2f}")
-    st.write("🔢 **Score Frequency Distribution**")
-    st.bar_chart(score_counts)
-else:
-    st.info("No reviews available for the selected filters to calculate scores.")
+# ✅ NEW: Aligned Sentiment Pie Chart
+st.subheader("🥧 Aligned Sentiment: Text and Emoji Agreement")
+aligned_filtered = filtered[
+    ((filtered['text_sentiment'] == 'Positive') & (filtered['sentiment'] == 'Positive')) |
+    ((filtered['text_sentiment'] == 'Negative') & (filtered['sentiment'] == 'Negative'))
+]
+aligned_filtered['combo_sentiment'] = (
+    "Text: " + aligned_filtered['text_sentiment'] + " | Emoji: " + aligned_filtered['sentiment']
+)
+aligned_counts = aligned_filtered['combo_sentiment'].value_counts()
+aligned_total = len(aligned_filtered)
+st.write(f"✅ **{aligned_total}** reviews show alignment between text and emoji sentiment.")
+if not aligned_counts.empty:
+    fig, ax = plt.subplots()
+    wedges, _, autotexts = ax.pie(aligned_counts, labels=None, autopct='%1.1f%%', startangle=90)
+    ax.legend(wedges, aligned_counts.index, title="Sentiment Pairs", loc="center left", bbox_to_anchor=(1, 0.5))
+    ax.set_title("Aligned Sentiment (Text and Emoji Match)")
+    ax.axis('equal')
+    st.pyplot(fig)
 
 # 📝 Sample Reviews Table
 st.subheader("📝 Sample Reviews")
@@ -250,9 +233,6 @@ if not filtered.empty:
         st.pyplot(fig)
     else:
         st.info("No positive emojis found in reviews.")
-else:
-    st.info("No reviews available to extract emojis.")
-
 # 📊 Negative Emoji Frequency Bar Plot
 st.subheader("📊 Negative Emoji Frequency (Sample Reviews)")
 if not filtered.empty:
@@ -282,3 +262,14 @@ if not filtered.empty:
         st.info("No negative emojis found in reviews.")
 else:
     st.info("No reviews available to extract emojis.")
+
+# 📊 Score Frequency & Average (if 'score' column exists)
+st.subheader(f"📊 Frequency and Average Score for {app_selected} - version:{version_selected}")
+if not filtered.empty and 'score' in filtered.columns:
+    score_counts = filtered['score'].value_counts().sort_index()
+    average_score = filtered['score'].mean()
+    st.write(f"📉 **Average Score**: {average_score:.2f}")
+    st.write("🔢 **Score Frequency Distribution**")
+    st.bar_chart(score_counts)
+else:
+    st.info("No reviews available for the selected filters to calculate scores.")
