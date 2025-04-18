@@ -296,3 +296,25 @@ if not filtered.empty and 'score' in filtered.columns:
     st.bar_chart(score_counts)
 else:
     st.info("No reviews available for the selected filters to calculate scores.")
+
+# 🚨 NEW: Strong Conflicting Sentiment Tab (VADER powered)
+from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
+
+analyzer = SentimentIntensityAnalyzer()
+st.subheader("🆚 Strong Conflicting Sentiment (VADER)")
+
+df_vader = filtered.copy()
+df_vader['vader_sentiment'] = df_vader['review'].apply(lambda x: 'Positive' if analyzer.polarity_scores(x)['compound'] > 0.5 else ('Negative' if analyzer.polarity_scores(x)['compound'] < -0.5 else 'Neutral'))
+
+conflicts_vader = df_vader[
+    ((df_vader['vader_sentiment'] == 'Positive') & (df_vader['sentiment'] == 'Negative')) |
+    ((df_vader['vader_sentiment'] == 'Negative') & (df_vader['sentiment'] == 'Positive'))
+]
+
+st.write(f"🧠 Found **{len(conflicts_vader)}** strongly conflicting reviews.")
+if not conflicts_vader.empty:
+    st.dataframe(conflicts_vader[['date', 'review', 'vader_sentiment', 'sentiment']], use_container_width=True)
+    st.download_button("📥 Download Conflicts (CSV)", data=conflicts_vader.to_csv(index=False), file_name="vader_conflicts.csv")
+else:
+    st.info("No strong conflicting reviews found using VADER.")
+
