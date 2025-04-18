@@ -203,6 +203,18 @@ st.dataframe(
     filtered[['date', 'review', 'sentiment', 'text_sentiment']].rename(columns={'sentiment': 'emoji_sentiment'}),
     use_container_width=True
 )
+# 🔀 Sample Conflicting Sentiment Reviews
+st.subheader("🔀 Sample Conflicting Sentiment Reviews")
+if not conflict_filtered.empty:
+    st.dataframe(
+        conflict_filtered[['date', 'review', 'sentiment', 'text_sentiment']].rename(
+            columns={'sentiment': 'emoji_sentiment'}
+        ),
+        use_container_width=True
+    )
+else:
+    st.info("No conflicting sentiment reviews found in the selected filters.")
+
 
 # 📊 Positive Emoji Frequency Bar Plot
 st.subheader("📊 Positive Emoji Frequency (Sample Reviews)")
