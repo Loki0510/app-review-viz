@@ -203,30 +203,6 @@ st.dataframe(
     filtered[['date', 'review', 'sentiment', 'text_sentiment']].rename(columns={'sentiment': 'emoji_sentiment'}),
     use_container_width=True
 )
-# 🎯 Extract High-Confidence Conflicting Sentiment Examples
-st.subheader("🎯 Examples of Strong Conflicting Sentiment Reviews")
-
-# Filter to strong text sentiment (TextBlob polarity > 0.5 or < -0.5)
-def is_strongly_positive(text):
-    return TextBlob(text).sentiment.polarity > 0.5
-
-def is_strongly_negative(text):
-    return TextBlob(text).sentiment.polarity < -0.5
-
-strong_conflicts = conflict_filtered[
-    (conflict_filtered['review'].apply(is_strongly_positive) & (conflict_filtered['sentiment'] == 'Negative')) |
-    (conflict_filtered['review'].apply(is_strongly_negative) & (conflict_filtered['sentiment'] == 'Positive'))
-]
-
-# Show only a few clean examples
-sample_conflicts = strong_conflicts[['date', 'review', 'sentiment', 'text_sentiment']].rename(columns={'sentiment': 'emoji_sentiment'}).head(10)
-
-if not sample_conflicts.empty:
-    st.write("Below are examples where the text and emoji sentiment completely contradict:")
-    st.dataframe(sample_conflicts, use_container_width=True)
-else:
-    st.info("No strong conflicting reviews found in the selected data.")
-
 # 📊 Positive Emoji Frequency Bar Plot
 st.subheader("📊 Positive Emoji Frequency (Sample Reviews)")
 if not filtered.empty:
